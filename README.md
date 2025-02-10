@@ -274,4 +274,16 @@ todo：
 
 系统架构细化处理
 
+
+### 知识星球
+如果你没有rust基础，我的知识星球内提供多个免杀模板和加密模板，并会持续维护，欢迎加入！
+![FvbISokumgaBHU2mmKRnpV7JF7pS](https://github.com/user-attachments/assets/3faf2769-369d-4628-91a4-8c36e83035f6)
+![FnFF1RzShvxKEsBAIHKmYqtDSY_r](https://github.com/user-attachments/assets/54bde3c7-1042-41eb-8936-3e8bbb20d7a5)
+
+知识星球内容除了免杀模板后续还会更新更多红队攻防内容！
+![海报](https://github.com/user-attachments/assets/402bfbb2-faf1-4ae6-a271-7b7b98573f02)
+
+
+
+
 ...
